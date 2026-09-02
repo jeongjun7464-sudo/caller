@@ -47,3 +47,18 @@ def test_meta_client_creates_waits_publishes_and_reads_media(tmp_path):
     media_id,permalink,_=asyncio.run(publisher.publish("https://cdn.example.com/card.jpg",PublishType.STORY))
     assert media_id=="media-1" and permalink.endswith("media-1/")
     assert [item[1] for item in calls]==["/v23.0/ig-1/media","/v23.0/container-1","/v23.0/ig-1/media_publish","/v23.0/media-1"]
+
+def test_prophecy_prepares_reveals_once(tmp_path):
+    client=TestClient(create_app(settings(tmp_path)))
+    created=client.post("/api/v1/prophecies",json={"expiresInMinutes":5}).json()
+    preparing=client.get(f"/p/{created['roomCode']}/{created['token']}")
+    assert "예언을 준비" in preparing.text
+    client.put(f"/api/v1/prophecies/{created['roomCode']}/{created['token']}/card",json={"cardId":"HEARTS_ACE"}).raise_for_status()
+    first=client.get(f"/p/{created['roomCode']}/{created['token']}")
+    second=client.get(f"/p/{created['roomCode']}/{created['token']}")
+    assert "♥" in first.text and "이미 공개" in second.text
+
+def test_each_audience_gets_unique_room_and_token(tmp_path):
+    client=TestClient(create_app(settings(tmp_path)))
+    a=client.post("/api/v1/prophecies",json={"cardId":"CLUBS_TWO"}).json();b=client.post("/api/v1/prophecies",json={"cardId":"DIAMONDS_QUEEN"}).json()
+    assert a["roomCode"]!=b["roomCode"] and a["token"]!=b["token"]

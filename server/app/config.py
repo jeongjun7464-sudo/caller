@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     database_path: Path = Path("data/cardcaller.db")
     media_dir: Path = Path("media")
     public_media_base_url: str = "http://localhost:8000/media"
+    public_app_base_url: str = "http://localhost:8000"
     s3_bucket: str = ""
     s3_region: str = ""
     s3_endpoint_url: str = ""
@@ -31,11 +32,14 @@ class Settings(BaseSettings):
             "APP_SECRET": self.app_secret,
             "S3_BUCKET": self.s3_bucket,
             "PUBLIC_MEDIA_BASE_URL": self.public_media_base_url,
+            "PUBLIC_APP_BASE_URL": self.public_app_base_url,
         }.items() if not value]
         if missing:
             raise RuntimeError(f"Missing production settings: {', '.join(missing)}")
         if not self.public_media_base_url.startswith("https://"):
             raise RuntimeError("PUBLIC_MEDIA_BASE_URL must use HTTPS in live mode")
+        if not self.public_app_base_url.startswith("https://"):
+            raise RuntimeError("PUBLIC_APP_BASE_URL must use HTTPS in live mode")
 
 @lru_cache
 def get_settings() -> Settings:

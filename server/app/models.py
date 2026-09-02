@@ -37,5 +37,23 @@ class PublishResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
     error: str | None = None
 
+class ProphecyCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    card_id: str | None = Field(default=None, alias="cardId")
+    expires_in_minutes: int = Field(default=5, ge=1, le=60, alias="expiresInMinutes")
+
+class ProphecyCardRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    card_id: str = Field(alias="cardId")
+
+class ProphecyResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    room_code: str = Field(alias="roomCode")
+    token: str
+    qr_url: str = Field(alias="qrUrl")
+    expires_at: datetime = Field(alias="expiresAt")
+    card_id: str | None = Field(default=None, alias="cardId")
+    consumed: bool = False
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
