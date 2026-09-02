@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "auth != null && $room.matches(/^[0-9]{6}$/) && data.child('meta/expiresAt').val() > now - 86400000",
+        ".write": "auth != null && $room.matches(/^[0-9]{6}$/)",
+        "meta": { "expiresAt": { ".validate": "newData.isNumber()" } },
+        "messages": { "$id": { ".validate": "newData.hasChildren(['roomCode','cardId','senderId','messageId','createdAt','status']) && newData.child('roomCode').val() == $room && newData.child('senderId').val() == auth.uid" } }
+      }
+    }
+  }
+}
