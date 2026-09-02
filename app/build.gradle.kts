@@ -16,6 +16,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        val apiBaseUrl = providers.gradleProperty("CARD_CALLER_API_BASE_URL").orElse("http://10.0.2.2:8000").get()
+        buildConfigField("String", "CARD_CALLER_API_BASE_URL", "\"$apiBaseUrl\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

@@ -21,3 +21,7 @@ enum class CallTheme { ANDROID, DARK, SIMPLE, CUSTOM }
 data class AppSettings(val delaySeconds: Int = 3, val vibrate: Boolean = true, val ringtone: Boolean = true, val maxBrightness: Boolean = false, val displayFormat: CardDisplayFormat = CardDisplayFormat.SYMBOL, val callTheme: CallTheme = CallTheme.DARK, val gestureSensitivity: Float = 80f, val hideGestureResult: Boolean = true, val flipTrigger: Boolean = false, val volumeTrigger: Boolean = false, val clearLastCard: Boolean = true, val customCallerName: String = "")
 data class RemoteMessage(val roomCode: String = "", val cardId: String = "", val senderId: String = "", val messageId: String = "", val createdAt: Long = 0, val consumedAt: Long? = null, val status: String = "pending")
 enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CARD_RECEIVED, RECONNECTING }
+enum class InstagramPublishType { STORY, FEED }
+enum class InstagramPublishStatus { IDLE, CONFIRMING, PUBLISHING, SUCCEEDED, FAILED, RETRYING }
+data class InstagramAccount(val username:String="연결되지 않음",val profileUrl:String="https://www.instagram.com/")
+data class InstagramPublishResult(val requestId:String,val status:InstagramPublishStatus,val mediaId:String?=null,val permalink:String?=null,val createdAt:String?=null,val error:String?=null)

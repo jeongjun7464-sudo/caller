@@ -6,3 +6,9 @@ local.properties
 app/google-services.json
 *.jks
 *.keystore
+server/.env
+server/.venv/
+server/data/*.db
+server/media/*.jpg
+server/**/__pycache__/
+.pytest_cache/
