@@ -55,5 +55,14 @@ class ProphecyResponse(BaseModel):
     card_id: str | None = Field(default=None, alias="cardId")
     consumed: bool = False
 
+class SessionCreateRequest(BaseModel):
+    expires_in_minutes:int=Field(default=10,ge=1,le=60,alias="expiresInMinutes")
+class SessionCommand(BaseModel):
+    type:str
+    card_id:str|None=Field(default=None,alias="cardId")
+    message:str|None=None
+class ReactionRequest(BaseModel):
+    emoji:str=Field(min_length=1,max_length=8)
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

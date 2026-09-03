@@ -1,0 +1,3 @@
+export type Reveal={status:'PREPARING'|'REVEALED';cardId?:string;expiresAt:string};
+export async function fetchReveal(token:string,base=import.meta.env.VITE_API_BASE_URL||'/api/v1'){const response=await fetch(`${base}/reveals/${encodeURIComponent(token)}`);if(response.status===410)throw new Error('이 공개 링크는 만료되었거나 이미 사용되었습니다.');if(!response.ok)throw new Error('공개 정보를 불러오지 못했습니다.');return response.json() as Promise<Reveal>}
+export function cardLabel(id?:string){if(!id)return '';const [suit,rank]=id.split('_');const symbols:Record<string,string>={SPADES:'♠',HEARTS:'♥',DIAMONDS:'♦',CLUBS:'♣'};const ranks:Record<string,string>={ACE:'A',JACK:'J',QUEEN:'Q',KING:'K'};return `${symbols[suit]??'★'} ${ranks[rank]??rank}`}

@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{cardLabel}from'./api';describe('cardLabel',()=>{it('renders card ids',()=>expect(cardLabel('SPADES_SEVEN')).toBe('♠ SEVEN'));it('renders face ranks',()=>expect(cardLabel('HEARTS_QUEEN')).toBe('♥ Q'))})

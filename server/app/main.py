@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from html import escape
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +7,9 @@ from .cards import create_card_image
 from .config import Settings, get_settings
 from .database import PublishDatabase
 from .instagram import build_publisher
-from .models import AccountResponse, PublishRequest, PublishResponse, PublishStatus, ProphecyCreateRequest, ProphecyCardRequest, ProphecyResponse
+from .models import AccountResponse, PublishRequest, PublishResponse, PublishStatus, ProphecyCreateRequest, ProphecyCardRequest, ProphecyResponse, SessionCreateRequest, SessionCommand, ReactionRequest, utc_now
+import secrets
+from datetime import timedelta
 from .storage import build_storage
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -15,6 +17,50 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Card Caller Instagram Publisher", version="1.0.0")
     app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
     database, storage, publisher = PublishDatabase(settings.database_path), build_storage(settings), build_publisher(settings)
+    live_sessions:dict[str,dict]={}; sockets:dict[str,list[WebSocket]]={}
+    def active(code:str):
+        session=live_sessions.get(code)
+        if not session: raise HTTPException(404,"Session not found")
+        if session["expiresAt"]<=utc_now(): raise HTTPException(410,"Session expired")
+        if session["ended"]: raise HTTPException(410,"Session ended")
+        return session
+    @app.post("/api/v1/sessions")
+    async def create_session(request:SessionCreateRequest):
+        while True:
+            code=secrets.token_urlsafe(6).replace("-","").replace("_","")[:8].upper()
+            if code not in live_sessions:break
+        live_sessions[code]={"code":code,"expiresAt":utc_now()+timedelta(minutes=request.expires_in_minutes),"ended":False,"lastCommandId":None,"reaction":None}
+        return {"code":code,"expiresAt":live_sessions[code]["expiresAt"],"audienceUrl":f"{settings.public_app_base_url.rstrip('/')}/audience/{code}"}
+    @app.post("/api/v1/sessions/{code}/commands")
+    async def command(code:str,request:SessionCommand,idempotency_key:str=Header(...,alias="Idempotency-Key")):
+        session=active(code)
+        if session["lastCommandId"]==idempotency_key:return {"accepted":False,"duplicate":True}
+        if request.card_id:
+            try:PublishRequest(cardId=request.card_id,publishType="STORY").validate_card()
+            except ValueError as error:raise HTTPException(422,str(error)) from error
+        event={"type":request.type,"cardId":request.card_id,"message":request.message,"commandId":idempotency_key}
+        session["lastCommandId"]=idempotency_key
+        for ws in list(sockets.get(code,[])):
+            try:await ws.send_json(event)
+            except Exception:sockets[code].remove(ws)
+        return {"accepted":True,"duplicate":False}
+    @app.post("/api/v1/sessions/{code}/reaction")
+    async def reaction(code:str,request:ReactionRequest):active(code)["reaction"]=request.emoji;return {"saved":True}
+    @app.websocket("/ws/sessions/{code}")
+    async def session_socket(websocket:WebSocket,code:str):
+        try:active(code)
+        except HTTPException:await websocket.close(code=4404);return
+        await websocket.accept();sockets.setdefault(code,[]).append(websocket)
+        try:
+            await websocket.send_json({"type":"CONNECTED","code":code})
+            while True:await websocket.receive_text()
+        except WebSocketDisconnect:pass
+        finally:
+            if websocket in sockets.get(code,[]):sockets[code].remove(websocket)
+    @app.get("/audience/{code}",response_class=HTMLResponse)
+    async def audience_page(code:str):
+        active(code)
+        return HTMLResponse(f'''<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{{background:#07111f;color:#fff;text-align:center;font-family:sans-serif;padding:20vh 20px}}#card{{font-size:72px;color:#d4af37}}button{{font-size:30px;margin:8px}}</style><h1>Magic Caller AI</h1><div id="card">공연 시작을 기다리고 있습니다</div><div><button onclick="react('👏')">👏</button><button onclick="react('😮')">😮</button><button onclick="react('❤️')">❤️</button></div><script>const ws=new WebSocket(`${{location.protocol==='https:'?'wss':'ws'}}://${{location.host}}/ws/sessions/{escape(code)}`);ws.onmessage=e=>{{const d=JSON.parse(e.data);if(d.message)card.textContent=d.message;if(d.cardId&&d.type==='REVEAL')card.textContent=d.cardId}};function react(emoji){{fetch('/api/v1/sessions/{escape(code)}/reaction',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{emoji}})}})}}</script></html>''')
     @app.get("/health")
     async def health(): return {"status":"ok", "instagramMode":settings.instagram_mode}
     @app.get("/api/v1/account", response_model=AccountResponse, response_model_by_alias=True)

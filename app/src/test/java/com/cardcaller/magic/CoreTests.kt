@@ -2,7 +2,7 @@ package com.cardcaller.magic
 import org.junit.Assert.*
 import org.junit.Test
 class CoreTests {
- @Test fun deckHas52UniqueCards(){assertEquals(52,PlayingCard.deck.size);assertEquals(52,PlayingCard.deck.map{it.id}.toSet().size)}
+ @Test fun deckHas52CardsAndTwoJokers(){assertEquals(54,PlayingCard.deck.size);assertEquals(54,PlayingCard.deck.map{it.id}.toSet().size);assertNotNull(PlayingCard.fromId("JR"));assertNotNull(PlayingCard.fromId("JB"))}
  @Test fun idRoundTrip(){PlayingCard.deck.forEach{assertEquals(it,PlayingCard.fromId(it.id))}}
  @Test fun tapMapping(){assertEquals(Rank.ACE,GestureInputManager.rank(1));assertEquals(Rank.TEN,GestureInputManager.rank(10));assertEquals(Rank.KING,GestureInputManager.rank(13))}
  @Test fun invalidTaps(){assertNull(GestureInputManager.rank(0));assertNull(GestureInputManager.rank(14))}
@@ -13,4 +13,9 @@ class CoreTests {
  @Test fun ttsSupportsKoreanAndEnglish(){val c=PlayingCard(Suit.SPADES,Rank.KING);assertTrue(MagicLabLogic.ttsPhrase(c,TtsLanguage.KOREAN).contains("스페이드 킹"));assertTrue(MagicLabLogic.ttsPhrase(c,TtsLanguage.ENGLISH).contains("KING OF SPADES"))}
  @Test fun lieDetectorAlwaysReturnsPreselectedCard(){val c=PlayingCard(Suit.CLUBS,Rank.SEVEN);assertEquals(c,MagicLabLogic.forcedLieDetectorResult(c,listOf(true,false,true)))}
  @Test fun photoTransformIsConstrained(){val t=MagicLabLogic.sanitizeTransform(OverlayTransform(x=2f,y=-1f,alpha=3f,rotation=300f,shadow=-4f));assertEquals(1f,t.x);assertEquals(0f,t.y);assertEquals(1f,t.alpha);assertEquals(180f,t.rotation);assertEquals(0f,t.shadow)}
+ @Test fun stateMachineRejectsInvalidTransitions(){val s=PerformanceSession();assertNull(PerformanceStateMachine.transition(s,PerformanceEvent.Ring));val ready=PerformanceStateMachine.transition(s,PerformanceEvent.Configure)!!;assertEquals(PerformanceState.READY,ready.state)}
+ @Test fun stateMachineRunsHappyPath(){var s=PerformanceSession();s=PerformanceStateMachine.transition(s,PerformanceEvent.Configure)!!;s=PerformanceStateMachine.transition(s,PerformanceEvent.AwaitInput)!!;s=PerformanceStateMachine.transition(s,PerformanceEvent.SelectCard(PlayingCard(Suit.SPADES,Rank.SEVEN)))!!;s=PerformanceStateMachine.transition(s,PerformanceEvent.Schedule)!!;s=PerformanceStateMachine.transition(s,PerformanceEvent.Ring)!!;s=PerformanceStateMachine.transition(s,PerformanceEvent.Accept)!!;assertEquals(PerformanceState.CONNECTED,s.state)}
+ @Test fun volumeCombinationMapsCard(){val c=VolumeSecretInputController();assertNull(c.input(VolumeKey.UP,1));assertNull(c.input(VolumeKey.UP,2));repeat(7){assertNull(c.input(VolumeKey.DOWN,(3+it).toLong()))};assertEquals(PlayingCard(Suit.HEARTS,Rank.SEVEN),c.input(VolumeKey.UP,11))}
+ @Test fun voiceCodeParsesNaturalPhrase(){assertEquals(PlayingCard(Suit.SPADES,Rank.SEVEN),VoiceCodeParser.parse("검은 창문이 인상적이고 오늘 일곱 번째 손님이네요"))}
+ @Test fun rehearsalStatisticsUseRealAttempts(){val xs=listOf(RehearsalAttempt("A","A","touch",1000),RehearsalAttempt("A","B","touch",3000));assertEquals(50.0,RehearsalStats.accuracy(xs),0.01);assertEquals(2.0,RehearsalStats.averageSeconds(xs),0.01)}
 }

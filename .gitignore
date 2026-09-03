@@ -12,3 +12,11 @@ server/data/*.db
 server/media/*.jpg
 server/**/__pycache__/
 .pytest_cache/
+backend/.env
+backend/.venv/
+backend/*.db
+backend/**/__pycache__/
+reveal-web/node_modules/
+reveal-web/dist/
+*.tsbuildinfo
+.env

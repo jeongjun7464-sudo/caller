@@ -6,7 +6,7 @@ import kotlin.math.abs
 
 object GestureInputManager {
     fun suit(dx:Float,dy:Float,threshold:Float):Suit? { if(maxOf(abs(dx),abs(dy))<threshold)return null; return if(abs(dx)>abs(dy)) if(dx>0)Suit.HEARTS else Suit.DIAMONDS else if(dy<0)Suit.SPADES else Suit.CLUBS }
-    fun rank(taps:Int)=Rank.entries.getOrNull(taps-1)
+    fun rank(taps:Int)=Rank.entries.filter{it!=Rank.JOKER}.getOrNull(taps-1)
 }
 class SensorTriggerManager(context:Context, private val onFlip:()->Unit):SensorEventListener {
     private val manager=context.getSystemService(Context.SENSOR_SERVICE) as SensorManager

@@ -1,19 +1,22 @@
 package com.cardcaller.magic
 
-enum class Suit(val symbol: String, val korean: String) { SPADES("♠","스페이드"), HEARTS("♥","하트"), CLUBS("♣","클럽"), DIAMONDS("♦","다이아몬드") }
-enum class Rank(val label: String, val korean: String) { ACE("A","에이스"), TWO("2","2"), THREE("3","3"), FOUR("4","4"), FIVE("5","5"), SIX("6","6"), SEVEN("7","7"), EIGHT("8","8"), NINE("9","9"), TEN("10","10"), JACK("J","잭"), QUEEN("Q","퀸"), KING("K","킹") }
-data class PlayingCard(val suit: Suit, val rank: Rank) {
-    val id = "${suit.name}_${rank.name}"
+enum class Suit(val symbol: String, val korean: String) { SPADES("♠","스페이드"), HEARTS("♥","하트"), CLUBS("♣","클럽"), DIAMONDS("♦","다이아몬드"), JOKER("★","조커") }
+enum class Rank(val label: String, val korean: String) { ACE("A","에이스"), TWO("2","2"), THREE("3","3"), FOUR("4","4"), FIVE("5","5"), SIX("6","6"), SEVEN("7","7"), EIGHT("8","8"), NINE("9","9"), TEN("10","10"), JACK("J","잭"), QUEEN("Q","퀸"), KING("K","킹"), JOKER("J","조커") }
+enum class JokerColor { RED, BLACK }
+data class PlayingCard(val suit: Suit, val rank: Rank, val jokerColor:JokerColor?=null) {
+    val id = if(suit==Suit.JOKER) "JOKER_${jokerColor?.name?:JokerColor.BLACK.name}" else "${suit.name}_${rank.name}"
+    val shortCode:String get() = if(suit==Suit.JOKER) if(jokerColor==JokerColor.RED) "JR" else "JB" else rank.label+when(suit){Suit.SPADES->"S";Suit.HEARTS->"H";Suit.DIAMONDS->"D";Suit.CLUBS->"C";Suit.JOKER->"J"}
     fun display(format: CardDisplayFormat, custom: String = "") = when(format) {
         CardDisplayFormat.SYMBOL -> "${suit.symbol} ${rank.label}"
         CardDisplayFormat.KOREAN -> "${suit.korean} ${rank.korean}"
-        CardDisplayFormat.ENGLISH -> "${rank.name} OF ${suit.name}"
+        CardDisplayFormat.ENGLISH -> if(suit==Suit.JOKER) "${jokerColor?.name?:"BLACK"} JOKER" else "${rank.name} OF ${suit.name}"
         CardDisplayFormat.IMAGE_ONLY -> "${suit.symbol}${rank.label}"
         CardDisplayFormat.CUSTOM -> custom.ifBlank { "${suit.symbol} ${rank.label}" }
     }
     companion object {
-        val deck = Suit.entries.flatMap { s -> Rank.entries.map { PlayingCard(s, it) } }
-        fun fromId(id: String?): PlayingCard? = deck.firstOrNull { it.id == id }
+        private val regularSuits=Suit.entries.filter{it!=Suit.JOKER};private val regularRanks=Rank.entries.filter{it!=Rank.JOKER}
+        val deck = regularSuits.flatMap { s -> regularRanks.map { PlayingCard(s, it) } } + listOf(PlayingCard(Suit.JOKER,Rank.JOKER,JokerColor.RED),PlayingCard(Suit.JOKER,Rank.JOKER,JokerColor.BLACK))
+        fun fromId(id: String?): PlayingCard? = deck.firstOrNull { it.id == id || it.shortCode.equals(id,true) }
     }
 }
 enum class CardDisplayFormat { SYMBOL, KOREAN, ENGLISH, IMAGE_ONLY, CUSTOM }

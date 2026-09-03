@@ -62,3 +62,19 @@ def test_each_audience_gets_unique_room_and_token(tmp_path):
     client=TestClient(create_app(settings(tmp_path)))
     a=client.post("/api/v1/prophecies",json={"cardId":"CLUBS_TWO"}).json();b=client.post("/api/v1/prophecies",json={"cardId":"DIAMONDS_QUEEN"}).json()
     assert a["roomCode"]!=b["roomCode"] and a["token"]!=b["token"]
+
+def test_live_session_websocket_receives_idempotent_command(tmp_path):
+    client=TestClient(create_app(settings(tmp_path)))
+    code=client.post("/api/v1/sessions",json={"expiresInMinutes":10}).json()["code"]
+    with client.websocket_connect(f"/ws/sessions/{code}") as socket:
+        assert socket.receive_json()["type"]=="CONNECTED"
+        payload={"type":"REVEAL","cardId":"SPADES_SEVEN","message":"검은 카드입니다"}
+        first=client.post(f"/api/v1/sessions/{code}/commands",headers={"Idempotency-Key":"cmd-1"},json=payload)
+        assert first.json()=={"accepted":True,"duplicate":False}
+        assert socket.receive_json()["cardId"]=="SPADES_SEVEN"
+        duplicate=client.post(f"/api/v1/sessions/{code}/commands",headers={"Idempotency-Key":"cmd-1"},json=payload)
+        assert duplicate.json()=={"accepted":False,"duplicate":True}
+
+def test_invalid_session_code_is_rejected(tmp_path):
+    client=TestClient(create_app(settings(tmp_path)))
+    assert client.post("/api/v1/sessions/UNKNOWN/reaction",json={"emoji":"👏"}).status_code==404

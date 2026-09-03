@@ -1,10 +1,28 @@
-# Card Caller
+# Magic Caller AI
 
-마술사가 고른 카드를 앱 안의 엔터테인먼트용 수신 화면으로 연출하는 Android 앱입니다. 실제 전화 발신, 통화 기록, 연락처 기능을 사용하지 않습니다.
+비밀 카드 입력과 단계형 AI 연출을 결합한 참여형 디지털 마술 플랫폼입니다. 실제 전화 발신, 통화 기록, 연락처 또는 시스템 전화 UI를 사용하지 않습니다.
+
+> AI가 마술을 대신하는 것이 아니라, 마술사의 연출과 관객 경험을 강화합니다.
+
+## 사용자 흐름
+
+```mermaid
+flowchart LR
+  A[공연 세션 생성] --> B[터치·볼륨·음성 비밀 입력]
+  B --> C[명시적 상태 머신]
+  C --> D[지연·센서·원격 트리거]
+  D --> E[앱 내부 모의 수신]
+  E --> F[AI 단계형 대사]
+  F --> G[카드 공개]
+  G --> H[관객 반응·리허설 통계]
+  C <--> I[FastAPI WebSocket 관객 페이지]
+```
+
+서버나 API 키가 없어도 로컬 `TemplateDialogueGenerator`와 Demo Mode로 핵심 시연이 가능합니다. AI 공급자는 `DialogueGenerator` 인터페이스 뒤에서 교체하며, 실패·시간 초과·비정상적으로 긴 결과는 안전한 템플릿으로 대체합니다.
 
 ## 기능
 
-- 52장 직접 선택, 4열 카드 그리드
+- 표준 52장과 빨강/검정 조커, 통일된 short code (`AS`, `7S`, `JR`, `JB`)
 - 화면을 보지 않는 스와이프(무늬) + 탭(숫자) 입력과 햅틱
 - 즉시/지연/화면 뒤집기/포그라운드 볼륨 버튼 트리거
 - 진동·벨소리를 포함한 앱 내부 전체화면 수신 연출 및 카드 공개
@@ -12,6 +30,10 @@
 - Firebase 익명 인증 + Realtime Database 기반 두 기기 원격 전송과 중복 소비 방지
 - FastAPI 서버를 통한 실제 Instagram Story/피드 카드 공개(공식 Content Publishing API)
 - Magic Lab: 일회용 QR, 실제 알림, TTS 음성 공개, 거짓말 탐지기, 사진 합성, 다중 관객
+- 오프라인 Demo Mode 3종, 단계형 AI 통화, 명시적 공연 상태 머신
+- 볼륨 UP=무늬/볼륨 DOWN=값 조합 및 자연어 음성 암호 파서
+- 리허설 랜덤 출제, 정확도·평균 입력시간 통계
+- FastAPI 단기 세션, 관객 WebSocket 메시지와 이모지 반응, 중복 명령 방지
 - Firebase가 없어도 로컬 기능 정상 동작
 
 ## 기술과 구조
@@ -26,6 +48,34 @@ Kotlin, Jetpack Compose, Material 3, MVVM, Coroutines, DataStore, Firebase Authe
 4. Sync 후 `app` 구성을 API 26 이상 기기에서 실행합니다.
 
 `google-services.json`이 없으면 Google Services 플러그인을 적용하지 않습니다. 직접 선택과 제스처 공연은 그대로 사용할 수 있습니다.
+
+## Demo Mode
+
+홈의 **Demo Mode**는 네트워크와 API 키 없이 동작합니다.
+
+- 데모 1: 스페이드 7 / 터치 / 5초 / 멘탈리스트 / 검정·금색
+- 데모 2: 하트 퀸 / 볼륨 / 뒤집기 / 유쾌한 스타일 / 네온
+- 데모 3: 클럽 A / 음성 암호 / 즉시 / 신비로운 스타일 / 클래식
+
+볼륨 조합 입력은 설정에서 활성화한 동안 앱이 포그라운드일 때만 키 이벤트를 소비합니다. 접근성 서비스를 사용하지 않으며 제조사·오디오 정책에 따라 키 이벤트 전달이 다를 수 있습니다. 음성 암호 파서는 원본 오디오를 저장하지 않는 순수 텍스트 해석 계층이며, 실제 SpeechRecognizer 연결 전에도 단위 테스트할 수 있습니다.
+
+## 공연 상태와 복구
+
+`CREATED → READY → WAITING_FOR_SECRET_INPUT → CARD_SELECTED → TRIGGER_SCHEDULED → INCOMING → CONNECTED → REVEALING → COMPLETED` 전이를 `PerformanceStateMachine`이 검사합니다. 잘못된 전이는 거부됩니다. DataStore에는 장기 설정이 저장되며, 진행 세션 영속화와 Room 기반 전체 공연 기록은 현재 알려진 제한사항입니다.
+
+## 관객용 WebSocket 세션
+
+`POST /api/v1/sessions`로 기본 10분짜리 난수 세션을 만들고 `/audience/{code}`를 공유합니다. `/ws/sessions/{code}`는 공연 메시지를 전달하며, `POST /api/v1/sessions/{code}/commands`의 `Idempotency-Key`가 같은 명령의 재실행을 막습니다. 관객은 개인정보 없이 이모지 반응을 보낼 수 있습니다.
+
+## 개인정보와 안전
+
+- `READ_CALL_LOG`, 연락처, 실제 발신, Telecom 권한을 요청하지 않습니다.
+- 수신 화면과 AI 통화 화면에는 공연용 모의 화면임을 계속 표시합니다.
+- 앱은 관객 비밀번호, 계정 정보나 생체정보를 수집하지 않습니다.
+- API 키와 서버 토큰은 환경변수 또는 로컬 빌드 속성만 사용하며 Git에 포함하지 않습니다.
+- 화면 캡처는 `docs/screenshots/`에 추가할 수 있습니다.
+
+해커톤 발표 원고와 체크리스트는 [`docs/hackathon-pitch.md`](docs/hackathon-pitch.md)에 있습니다.
 
 ## Firebase 연결 (처음 사용자)
 
@@ -194,3 +244,62 @@ QR에는 6자리 방 코드와 `secrets.token_urlsafe`로 만든 토큰이 들�
 - Story 게시물은 일반 게시물처럼 영구 permalink가 제공되지 않을 수 있으므로 앱의 `Instagram에서 확인`은 연결된 프로필을 엽니다.
 - 서버의 로컬 미디어 제공은 모의 개발 전용입니다. 실제 Meta 게시에는 공개 HTTPS 객체 저장소가 필요합니다.
 - 향후 암호화된 참여 토큰, 연결 상태 presence, 오디오 선택, 스크린샷 기반 회귀 테스트를 추가할 수 있습니다.
+
+## 플랫폼 저장소 구성
+
+```text
+caller/
+├── app/                 # Android 앱 (안전한 이전 전 현재 위치)
+├── backend/             # Python 3.12 FastAPI 플랫폼 API
+├── reveal-web/          # React + TypeScript 관객 공개 화면
+├── firebase/            # RTDB 보안 규칙과 설정 안내
+├── infrastructure/      # Nginx 설정
+├── docs/                # 아키텍처와 해커톤 발표 자료
+└── docker-compose.yml
+```
+
+Android 소스는 기존 미커밋 변경과 Gradle `:app` 참조를 보존하기 위해 이번 단계에서 물리적으로 이동하지 않았습니다. 안전한 이전 절차는 [`docs/architecture.md`](docs/architecture.md)에 기록했습니다.
+
+### 플랫폼 로컬 실행
+
+1. 루트 `.env.example`을 `.env`로 복사합니다. 실제 토큰은 커밋하지 않습니다.
+2. `docker compose up --build`를 실행합니다.
+3. 통합 진입점 `http://localhost:8080`, OpenAPI `http://localhost:8080/docs`를 엽니다.
+4. Android는 `-PCARD_CALLER_API_BASE_URL=http://10.0.2.2:8080`으로 빌드합니다.
+
+개별 Backend 실행:
+
+```bash
+cd backend
+python -m venv .venv
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+pytest
+ruff check .
+mypy app
+```
+
+개별 Web 실행:
+
+```bash
+cd reveal-web
+npm install
+npm run dev
+npm test
+npm run lint
+npm run build
+```
+
+Firebase는 익명 인증, Realtime Database, Cloud Messaging을 활성화하고 [`firebase/database.rules.json`](firebase/database.rules.json)을 배포합니다. Meta 운영 환경은 Professional Instagram 계정, Content Publishing 권한, Webhook URL/검증 토큰, 서버 전용 장기 액세스 토큰과 앱 비밀값을 설정해야 합니다.
+
+플랫폼 API:
+
+- `POST /api/v1/sessions`
+- `POST /api/v1/sessions/{sessionId}/commands`
+- `GET /api/v1/sessions/{sessionId}/status`
+- `POST /api/v1/reveals`
+- `GET /api/v1/reveals/{token}`
+- `POST /api/v1/instagram/publish`
+- `GET /api/v1/instagram/publish/{requestId}`
+- `POST /api/v1/instagram/webhook`

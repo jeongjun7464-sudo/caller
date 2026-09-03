@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_DB: cardcaller, POSTGRES_USER: cardcaller, POSTGRES_PASSWORD: cardcaller}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U cardcaller], interval: 5s, timeout: 3s, retries: 10}
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+  backend:
+    build: ./backend
+    env_file: .env
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_started}}
+  reveal-web:
+    build: ./reveal-web
+  proxy:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes: [./infrastructure/nginx.conf:/etc/nginx/nginx.conf:ro]
+    depends_on: [backend, reveal-web]
+volumes: {postgres_data: {}, redis_data: {}}
+
