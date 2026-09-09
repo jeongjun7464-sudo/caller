@@ -61,7 +61,17 @@ Kotlin, Jetpack Compose, Material 3, MVVM, Coroutines, DataStore, Firebase Authe
 
 ## 공연 상태와 복구
 
-`CREATED → READY → WAITING_FOR_SECRET_INPUT → CARD_SELECTED → TRIGGER_SCHEDULED → INCOMING → CONNECTED → REVEALING → COMPLETED` 전이를 `PerformanceStateMachine`이 검사합니다. 잘못된 전이는 거부됩니다. DataStore에는 장기 설정이 저장되며, 진행 세션 영속화와 Room 기반 전체 공연 기록은 현재 알려진 제한사항입니다.
+`CREATED → READY → WAITING_FOR_SECRET_INPUT → CARD_SELECTED → TRIGGER_SCHEDULED → INCOMING → CONNECTED → REVEALING → COMPLETED` 전이를 `PerformanceStateMachine`이 검사합니다. UI의 선택·예약·즉시 실행·수신·단계형 대사·공개·완료 버튼이 각각 상태 이벤트에 연결되며 잘못된 전이는 화면 오류로 표시됩니다. 완료·취소 기록은 Room DB에 개인정보 없이 저장됩니다.
+
+## Blue Fan Deck과 발신자 설정
+
+Blue Fan은 특정 제조사의 명칭·로고·문양을 사용하지 않는 독창적인 파랑·흰색·은색 방사형 카드 뒷면입니다. 표준 52장과 빨강/검정 조커를 지원하며 공개 전 뒷면에서 최종 앞면으로 3D flip합니다. 시스템 애니메이션 배율이 0이면 전환 시간을 제거합니다.
+
+공연 설정에서 카드 이름, 기호, 이름 숨김, 사용자 지정 이름·문구를 선택할 수 있습니다. 사용자 지정 이름은 공백 제거 후 30자, 문구는 60자로 제한됩니다. 즉시·3·5·10초 및 0~60초 지연을 지원하며 Custom 테마의 잘못된 `#RRGGBB` 값은 기본 색상으로 교체됩니다.
+
+## 공연 기록과 통계
+
+Room의 `performance_history`에는 카드 ID, 입력/트리거 방식, 시작·완료 시각, 소요 시간, 반응, 성공 여부만 저장합니다. 전화번호·연락처·관객 이름은 저장하지 않습니다. 리허설 통계는 총 횟수, 성공, 정확도, 평균 입력시간, 가장 자주 틀린 카드, 무늬·값별 정확도와 목표 달성을 계산합니다. CSV 인코더는 저장소 계층과 분리된 순수 함수로 제공됩니다.
 
 ## 관객용 WebSocket 세션
 

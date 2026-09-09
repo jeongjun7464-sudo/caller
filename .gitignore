@@ -20,3 +20,4 @@ reveal-web/node_modules/
 reveal-web/dist/
 *.tsbuildinfo
 .env
+.tools/
