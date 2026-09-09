@@ -61,7 +61,30 @@ Kotlin, Jetpack Compose, Material 3, MVVM, Coroutines, DataStore, Firebase Authe
 
 ## 공연 상태와 복구
 
-`CREATED → READY → WAITING_FOR_SECRET_INPUT → CARD_SELECTED → TRIGGER_SCHEDULED → INCOMING → CONNECTED → REVEALING → COMPLETED` 전이를 `PerformanceStateMachine`이 검사합니다. 잘못된 전이는 거부됩니다. DataStore에는 장기 설정이 저장되며, 진행 세션 영속화와 Room 기반 전체 공연 기록은 현재 알려진 제한사항입니다.
+`CREATED → READY → WAITING_FOR_SECRET_INPUT → CARD_SELECTED → TRIGGER_SCHEDULED → INCOMING → CONNECTED → REVEALING → COMPLETED` 전이를 `PerformanceStateMachine`이 검사합니다. UI의 선택·예약·즉시 실행·수신·단계형 대사·공개·완료 버튼이 각각 상태 이벤트에 연결되며 잘못된 전이는 화면 오류로 표시됩니다. 완료·취소 기록은 Room DB에 개인정보 없이 저장됩니다.
+
+실제 공연 순서는 다음과 같습니다.
+
+1. 홈에서 직접 선택, 비밀 제스처 또는 원격 전송을 선택합니다.
+2. 54장 카드 중 한 장을 지정하고 즉시 또는 0~60초 지연 트리거를 예약합니다.
+3. 앱 내부의 공연용 수신 화면에서 전화를 받습니다.
+4. 단계형 대사를 진행하고 Blue Fan 카드를 뒤집어 결과를 공개합니다.
+5. **공연 완료**로 결과 화면을 열고 관객 반응을 기록합니다.
+6. **다시 공연하기** 또는 **홈으로**를 선택합니다.
+
+취소는 현재 예약 작업을 중단하고 `CANCELLED`, 처리할 수 없는 오류는 `FAILED`로 기록합니다. Firebase 연결은 무한 반복하지 않고 최대 3회 지수 백오프로 재연결하며, 실패하면 화면에 오프라인 상태와 오류를 표시합니다. 네트워크가 없어도 직접 선택, 제스처, 볼륨 입력과 앱 내부 수신 연출은 계속 사용할 수 있습니다.
+
+## Blue Fan Deck과 발신자 설정
+
+Blue Fan은 특정 제조사의 명칭·로고·문양을 사용하지 않는 독창적인 파랑·흰색·은색 방사형 카드 뒷면입니다. 표준 52장과 빨강/검정 조커를 지원하며 공개 전 뒷면에서 최종 앞면으로 3D flip합니다. 시스템 애니메이션 배율이 0이면 전환 시간을 제거합니다.
+
+공연 설정에서 카드 이름, 기호, 이름 숨김, 사용자 지정 이름·문구를 선택할 수 있습니다. 사용자 지정 이름은 공백 제거 후 30자, 문구는 60자로 제한됩니다. 즉시·3·5·10초 및 0~60초 지연을 지원하며 Custom 테마의 잘못된 `#RRGGBB` 값은 기본 색상으로 교체됩니다.
+
+## 공연 기록과 통계
+
+Room의 `performance_history`에는 카드 ID, 입력/트리거 방식, 시작·완료 시각, 소요 시간, 반응, 성공 여부만 저장합니다. 전화번호·연락처·관객 이름은 저장하지 않습니다. 리허설 통계는 총 횟수, 성공, 정확도, 평균 입력시간, 가장 자주 틀린 카드, 무늬·값별 정확도와 목표 달성을 계산합니다. CSV 인코더는 저장소 계층과 분리된 순수 함수로 제공됩니다.
+
+결과 화면에서는 놀람, 미소, 박수, 무반응 중 하나를 기록할 수 있습니다. 리허설 대시보드는 누적 공연 수, 성공률, 평균 소요 시간과 최근 기록을 표시합니다. 기록 삭제는 로컬 Room 데이터만 제거하며 서버나 관객 개인정보에는 영향을 주지 않습니다.
 
 ## 관객용 WebSocket 세션
 
@@ -108,6 +131,14 @@ Windows: `gradlew.bat test`, `gradlew.bat lint`, `gradlew.bat assembleDebug`
 macOS/Linux: `./gradlew test`, `./gradlew lint`, `./gradlew assembleDebug`
 
 APK는 `app/build/outputs/apk/debug/app-debug.apk`에 생성됩니다.
+
+현재 `feature/performance-flow-v2` 검증 결과:
+
+- Android debug/release 단위 테스트: 각각 24개 통과, 실패 0
+- Android lint 및 `assembleDebug`: 성공
+- Compose UI 계측 테스트 소스: 컴파일 성공(실행에는 에뮬레이터 또는 실제 기기 필요)
+- 신규 FastAPI 테스트 4개와 기존 서버 테스트 10개: 통과
+- Reveal Web 테스트 2개, ESLint, TypeScript, production build: 성공
 
 ## Instagram 공개 서버
 
@@ -237,7 +268,7 @@ QR에는 6자리 방 코드와 `secrets.token_urlsafe`로 만든 토큰이 들�
 
 ## 알려진 제한사항과 향후 개선
 
-- 사용자 지정 지연 시각/발신자 편집 UI, 사용자 지정 시각 테마 편집기는 다음 버전에서 확장할 수 있습니다.
+- 사용자 지정 발신자 이름·문구·지연·배경/강조/문자 색상은 지원하지만, 테마 가져오기·내보내기는 아직 제공하지 않습니다.
 - 근접 센서 대신 가속도계의 뒤집기 판정을 사용합니다.
 - 원격 방의 서버측 강제 만료/삭제는 Cloud Functions가 필요합니다.
 - UI 계측 테스트는 에뮬레이터 또는 실제 기기가 필요합니다.

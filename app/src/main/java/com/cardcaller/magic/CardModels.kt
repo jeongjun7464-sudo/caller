@@ -11,6 +11,7 @@ data class PlayingCard(val suit: Suit, val rank: Rank, val jokerColor:JokerColor
         CardDisplayFormat.KOREAN -> "${suit.korean} ${rank.korean}"
         CardDisplayFormat.ENGLISH -> if(suit==Suit.JOKER) "${jokerColor?.name?:"BLACK"} JOKER" else "${rank.name} OF ${suit.name}"
         CardDisplayFormat.IMAGE_ONLY -> "${suit.symbol}${rank.label}"
+        CardDisplayFormat.HIDDEN -> "알 수 없는 카드"
         CardDisplayFormat.CUSTOM -> custom.ifBlank { "${suit.symbol} ${rank.label}" }
     }
     companion object {
@@ -19,11 +20,11 @@ data class PlayingCard(val suit: Suit, val rank: Rank, val jokerColor:JokerColor
         fun fromId(id: String?): PlayingCard? = deck.firstOrNull { it.id == id || it.shortCode.equals(id,true) }
     }
 }
-enum class CardDisplayFormat { SYMBOL, KOREAN, ENGLISH, IMAGE_ONLY, CUSTOM }
-enum class CallTheme { ANDROID, DARK, SIMPLE, CUSTOM }
+enum class CardDisplayFormat { SYMBOL, KOREAN, ENGLISH, IMAGE_ONLY, HIDDEN, CUSTOM }
+enum class CallTheme { ANDROID, DARK, SIMPLE, BLUE_FAN, CUSTOM }
 enum class TtsLanguage { KOREAN, ENGLISH }
 enum class LabMode { PRACTICE, PERFORMANCE }
-data class AppSettings(val delaySeconds: Int = 3, val vibrate: Boolean = true, val ringtone: Boolean = true, val maxBrightness: Boolean = false, val displayFormat: CardDisplayFormat = CardDisplayFormat.SYMBOL, val callTheme: CallTheme = CallTheme.DARK, val gestureSensitivity: Float = 80f, val hideGestureResult: Boolean = true, val flipTrigger: Boolean = false, val volumeTrigger: Boolean = false, val clearLastCard: Boolean = true, val customCallerName: String = "",val notificationTitle:String="카드 예언",val notificationContent:String="당신이 선택한 카드는 %CARD%입니다",val notificationDelay:Int=5,val ttsEnabled:Boolean=true,val ttsLanguage:TtsLanguage=TtsLanguage.KOREAN,val ttsSpeed:Float=1f,val ttsDelay:Int=1,val labMode:LabMode=LabMode.PRACTICE,val qrExpiryMinutes:Int=5)
+data class AppSettings(val delaySeconds: Int = 3, val vibrate: Boolean = true, val ringtone: Boolean = true, val maxBrightness: Boolean = false, val displayFormat: CardDisplayFormat = CardDisplayFormat.SYMBOL, val callTheme: CallTheme = CallTheme.DARK, val gestureSensitivity: Float = 80f, val hideGestureResult: Boolean = true, val flipTrigger: Boolean = false, val volumeTrigger: Boolean = false, val clearLastCard: Boolean = true, val customCallerName: String = "",val customPhrase:String="",val customBackgroundColor:String="#07111F",val customAccentColor:String="#3DDC84",val customTextColor:String="#FFFFFF",val notificationTitle:String="카드 예언",val notificationContent:String="당신이 선택한 카드는 %CARD%입니다",val notificationDelay:Int=5,val ttsEnabled:Boolean=true,val ttsLanguage:TtsLanguage=TtsLanguage.KOREAN,val ttsSpeed:Float=1f,val ttsDelay:Int=1,val labMode:LabMode=LabMode.PRACTICE,val qrExpiryMinutes:Int=5,val targetAccuracy:Int=90)
 data class RemoteMessage(val roomCode: String = "", val cardId: String = "", val senderId: String = "", val messageId: String = "", val createdAt: Long = 0, val consumedAt: Long? = null, val status: String = "pending")
 enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CARD_RECEIVED, RECONNECTING }
 enum class InstagramPublishType { STORY, FEED }

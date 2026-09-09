@@ -4,7 +4,7 @@ import java.util.UUID
 import kotlin.math.max
 
 enum class PerformanceState { CREATED, READY, WAITING_FOR_SECRET_INPUT, CARD_SELECTED, TRIGGER_SCHEDULED, INCOMING, CONNECTED, REVEALING, COMPLETED, CANCELLED, FAILED }
-data class PerformanceSession(val id:String=UUID.randomUUID().toString(),val state:PerformanceState=PerformanceState.CREATED,val card:PlayingCard?=null,val startedAt:Long=System.currentTimeMillis(),val completedAt:Long?=null,val reaction:String?=null)
+data class PerformanceSession(val id:String=UUID.randomUUID().toString(),val state:PerformanceState=PerformanceState.CREATED,val card:PlayingCard?=null,val inputMethod:String="DIRECT",val triggerMethod:String="DELAY",val startedAt:Long=System.currentTimeMillis(),val completedAt:Long?=null,val reaction:String?=null,val success:Boolean?=null)
 sealed interface PerformanceEvent { data object Configure:PerformanceEvent;data object AwaitInput:PerformanceEvent;data class SelectCard(val card:PlayingCard):PerformanceEvent;data object Schedule:PerformanceEvent;data object Ring:PerformanceEvent;data object Accept:PerformanceEvent;data object Reveal:PerformanceEvent;data object Complete:PerformanceEvent;data object Cancel:PerformanceEvent;data object Fail:PerformanceEvent }
 object PerformanceStateMachine {
     fun transition(session:PerformanceSession,event:PerformanceEvent):PerformanceSession? {
@@ -47,3 +47,15 @@ class TemplateDialogueGenerator:DialogueGenerator {override suspend fun generate
 class SafeDialogueGenerator(private val remote:DialogueGenerator?,private val fallback:DialogueGenerator=TemplateDialogueGenerator()):DialogueGenerator {override suspend fun generate(card:PlayingCard,language:TtsLanguage,style:String)=runCatching{remote?.generate(card,language,style)?:error("offline")}.getOrNull()?.takeIf{it.finalReveal.length<=160&&it.estimatedSeconds in 5..60}?:fallback.generate(card,language,style)}
 data class RehearsalAttempt(val expected:String,val actual:String?,val method:String,val durationMs:Long,val at:Long=System.currentTimeMillis()){val correct get()=expected==actual}
 object RehearsalStats {fun accuracy(items:List<RehearsalAttempt>)=if(items.isEmpty())0.0 else items.count{it.correct}*100.0/items.size;fun averageSeconds(items:List<RehearsalAttempt>)=if(items.isEmpty())0.0 else items.sumOf{it.durationMs}.toDouble()/max(1,items.size)/1000.0}
+object CallerSettings {fun sanitizeName(value:String)=value.trim().take(30);fun delay(value:String)=value.toIntOrNull()?.takeIf{it in 0..60}}
+object ThemeSettings {private val hex=Regex("^#[0-9A-Fa-f]{6}$");fun validColor(value:String,fallback:String)=value.takeIf(hex::matches)?:fallback}
+fun performanceDuration(startedAt:Long,completedAt:Long?)=completedAt?.let{(it-startedAt).coerceAtLeast(0)}
+data class RehearsalSummary(val total:Int,val successes:Int,val accuracy:Double,val averageMs:Double,val mostMissedCard:String?,val bySuit:Map<String,Double>,val byRank:Map<String,Double>)
+object RehearsalAnalytics {
+    fun summarize(items:List<RehearsalAttempt>):RehearsalSummary {
+        fun rate(xs:List<RehearsalAttempt>)=if(xs.isEmpty())0.0 else xs.count{it.correct}*100.0/xs.size
+        val misses=items.filterNot{it.correct}.groupingBy{it.expected}.eachCount().maxByOrNull{it.value}?.key
+        val average=if(items.isEmpty())0.0 else items.map{it.durationMs}.average()
+        return RehearsalSummary(items.size,items.count{it.correct},rate(items),average,misses,items.groupBy{it.expected.substringBefore('_')}.mapValues{rate(it.value)},items.groupBy{it.expected.substringAfter('_')}.mapValues{rate(it.value)})
+    }
+}

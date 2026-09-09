@@ -78,3 +78,19 @@ sequenceDiagram
 ## 안전한 Android 이동 계획
 
 현재 Gradle은 루트 `settings.gradle.kts`에서 `:app`을 직접 포함하고 미커밋 사용자 변경이 존재합니다. 따라서 이번 변경에서는 이동하지 않았습니다. 변경사항을 먼저 커밋한 다음 별도 커밋에서 `app`, Gradle wrapper와 루트 Gradle 파일을 `android-app/`으로 이동하고 CI 작업 디렉터리를 함께 수정해야 합니다.
+
+## Android 공연 흐름 v2
+
+```mermaid
+flowchart LR
+  I[Secret Input] --> VM[ViewModel]
+  VM --> SM[Performance State Machine]
+  SM --> T[Trigger Controller]
+  T --> C[Simulated Incoming Call]
+  C --> AI[AI Dialogue]
+  AI --> R[Blue Fan Card Reveal]
+  R --> H[(Room History)]
+  H --> S[Statistics]
+```
+
+ViewModel은 각 UI 동작을 상태 이벤트로 변환하고 잘못된 전이를 사용자 오류로 남깁니다. 설정은 DataStore, 완료·취소 세션은 Room에 분리 저장합니다. Blue Fan 그래픽은 Compose Canvas로 직접 렌더링하며 외부 카드 이미지나 상표 자산을 사용하지 않습니다.
