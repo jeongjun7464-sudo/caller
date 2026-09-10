@@ -1,5 +1,6 @@
 *.iml
 .gradle/
+.kotlin/
 .idea/
 local.properties
 **/build/
@@ -21,3 +22,4 @@ reveal-web/dist/
 *.tsbuildinfo
 .env
 .tools/
+firmware/**/.pio/

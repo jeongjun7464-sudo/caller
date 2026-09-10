@@ -1,0 +1,29 @@
+#pragma once
+
+// 모든 핀과 BLE UUID는 이 파일에서 변경한다. SENSOR_PIN은 deep sleep 깨우기를
+// 사용하려면 RTC GPIO여야 한다(ESP32 DevKit 기본값 GPIO 33).
+#define DEVICE_NAME "Smart Deck"
+#define SERVICE_UUID "c4d30001-6f40-4af4-b6d1-64f3126d9201"
+#define COMMAND_UUID "c4d30002-6f40-4af4-b6d1-64f3126d9201"
+#define EVENT_UUID "c4d30003-6f40-4af4-b6d1-64f3126d9201"
+
+#define SENSOR_PIN 33
+#define LED_PIN 18
+#define TEST_BUTTON_PIN 32
+#define BATTERY_ADC_PIN 35
+#define PIXEL_COUNT 1
+#define SENSOR_OPEN_LEVEL HIGH
+
+#define SENSOR_DEBOUNCE_MS 200UL
+#define DEFAULT_MAX_ON_MS 30000UL
+#define HARD_MAX_ON_MS 120000UL
+#define IDLE_SLEEP_MS 600000UL
+#define LOW_BATTERY_PERCENT 15
+#define LOW_BATTERY_MAX_BRIGHTNESS 35
+
+// 실제 분압 저항에 맞춰 조정한다. 배터리 회로가 없으면 ENABLE_BATTERY_ADC를 0으로 둔다.
+#define ENABLE_BATTERY_ADC 0
+#define BATTERY_DIVIDER_RATIO 2.0f
+#define BATTERY_EMPTY_V 3.20f
+#define BATTERY_FULL_V 4.20f
+

@@ -19,6 +19,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBaseUrl = providers.gradleProperty("CARD_CALLER_API_BASE_URL").orElse("http://10.0.2.2:8000").get()
         buildConfigField("String", "CARD_CALLER_API_BASE_URL", "\"$apiBaseUrl\"")
+        val deckServiceUuid = providers.gradleProperty("SMART_DECK_SERVICE_UUID").orElse("c4d30001-6f40-4af4-b6d1-64f3126d9201").get()
+        val deckCommandUuid = providers.gradleProperty("SMART_DECK_COMMAND_UUID").orElse("c4d30002-6f40-4af4-b6d1-64f3126d9201").get()
+        val deckEventUuid = providers.gradleProperty("SMART_DECK_EVENT_UUID").orElse("c4d30003-6f40-4af4-b6d1-64f3126d9201").get()
+        buildConfigField("String", "SMART_DECK_SERVICE_UUID", "\"$deckServiceUuid\"")
+        buildConfigField("String", "SMART_DECK_COMMAND_UUID", "\"$deckCommandUuid\"")
+        buildConfigField("String", "SMART_DECK_EVENT_UUID", "\"$deckEventUuid\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
