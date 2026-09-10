@@ -276,6 +276,70 @@ QR에는 6자리 방 코드와 `secrets.token_urlsafe`로 만든 토큰이 들�
 - 서버의 로컬 미디어 제공은 모의 개발 전용입니다. 실제 Meta 게시에는 공개 HTTPS 객체 저장소가 필요합니다.
 - 향후 암호화된 참여 토큰, 연결 상태 presence, 오디오 선택, 스크린샷 기반 회귀 테스트를 추가할 수 있습니다.
 
+## Smart Deck Mode
+
+Smart Deck은 일반 ESP32·BLE·홀 센서·WS2812B를 이용해 카드 케이스의 열림을 감지하고 파란 LED 또는 선택 카드에 맞는 효과를 실행하는 독립 공연 보조 기능입니다. 특정 상용 제품의 명칭, 로고, 이미지, 회로 설계를 사용하지 않으며 실제 전화 대신 기존 앱 내부 공연 화면과만 연동됩니다.
+
+```mermaid
+flowchart LR
+  A[Card Caller 앱] <-->|BLE JSON| B[ESP32]
+  B --> C[홀/리드 센서]
+  B --> D[WS2812B LED]
+  A --> E[Fake 장치 리허설]
+```
+
+### 부품과 배선
+
+- ESP32 DevKit
+- 디지털 홀 센서 또는 리드 스위치
+- WS2812B LED 1개 또는 일반 파란 LED와 적절한 구동 회로
+- LED 데이터선용 220Ω 저항
+- 보호·충전·정전압 회로가 포함된 소형 배터리 전원
+- 선택: 배터리 전압 측정용 분압 회로
+
+기본 예제는 WS2812B DATA를 GPIO18, 센서를 GPIO33과 GND, 테스트 버튼을 GPIO32와 GND에 연결합니다. 모든 GND를 공통으로 연결하고 LED 전원에는 제조사 권장 디커플링을 사용하세요. 배터리를 GPIO나 LED에 직접 연결하면 안 됩니다. 핀, 센서 극성, UUID, 전압 계산값은 [`firmware/esp32-smart-deck/include/config.h`](firmware/esp32-smart-deck/include/config.h)에서 변경합니다.
+
+### 펌웨어 빌드와 업로드
+
+VS Code PlatformIO 또는 PlatformIO Core를 설치한 뒤 실행합니다.
+
+```bash
+cd firmware/esp32-smart-deck
+pio run
+pio run --target upload
+pio device monitor
+```
+
+펌웨어는 BLE GATT, 200ms 센서 디바운스, PWM/WS2812B 효과, 연결 해제 fail-safe, 기본 30초 점등 제한, 저전압 밝기 제한, 미연결 독립 파란 LED, 10분 유휴 deep sleep과 테스트 버튼을 구현합니다.
+
+### Android 연결
+
+1. 홈에서 **Smart Deck** → **장치 설정**으로 이동합니다.
+2. Fake 장치 사용을 끄고 **장치 검색**을 누릅니다.
+3. Android 12 이상에서는 주변 기기 검색·연결 권한을, Android 11 이하에서는 BLE 검색에 필요한 위치 권한을 승인합니다. 앱 시작 시에는 권한을 요청하지 않습니다.
+4. 검색 결과의 `Smart Deck` 장치를 선택하고 ARM을 누릅니다.
+5. 케이스를 열고 LED, 케이스 상태, 배터리 표시를 확인합니다.
+
+권한을 거부했다면 Android 설정 → 앱 → Card Caller → 권한에서 주변 기기(이전 버전은 위치)를 허용한 뒤 다시 검색합니다. Android UUID는 `SMART_DECK_SERVICE_UUID`, `SMART_DECK_COMMAND_UUID`, `SMART_DECK_EVENT_UUID` Gradle 속성으로 덮어쓸 수 있으며 펌웨어 값과 반드시 같아야 합니다.
+
+자동, 0~5초 고정/무작위 지연, 카드 공개 후 피날레 모드를 지원합니다. 기본 효과는 문양별 색상이며 숫자만큼 점멸은 공연이 길어질 수 있어 선택 옵션입니다. J/Q/K, 조커 및 현재 카드별 전용 효과도 설정할 수 있습니다. 숨겨진 전체 화면 터치 또는 볼륨 위/아래와 길게 누르기는 설정에서 명시적으로 켠 경우에만 LED를 제어합니다.
+
+### Fake 장치 테스트
+
+하드웨어가 없으면 장치 설정에서 **Fake 장치 사용**을 켭니다. 장치 검색 후 `Smart Deck Simulator`에 연결하고 대시보드의 **케이스 열기/닫기** 또는 리허설 화면으로 전체 흐름을 시험합니다. Fake와 실제 BLE 장치는 동일한 `SmartDeckDevice` 인터페이스와 메시지 모델을 사용합니다.
+
+### 공연 전 체크리스트
+
+- 배터리 잔량, LED 최대 밝기와 발열 확인
+- 센서 열림/닫힘 방향 및 200ms 디바운스 확인
+- ARM 후 케이스 열기·닫기와 긴급 LED OFF 확인
+- 카드 문양 색상과 피날레 효과 확인
+- 연결을 끊었을 때 LED OFF와 앱 진동 확인
+- 자동 종료가 120초 이하인지 확인
+- 실제 공연 장소에서 BLE 거리와 간섭 확인
+
+공연 중 오류는 관객 화면에 기술 용어로 표시되지 않습니다. 실제 장치 조립·배터리 충전·절연은 부품 제조사 안전 지침을 따르세요. 상세 구조는 [`docs/SMART_DECK_ARCHITECTURE.md`](docs/SMART_DECK_ARCHITECTURE.md), 변경 전 분석은 [`docs/SMART_DECK_ANALYSIS.md`](docs/SMART_DECK_ANALYSIS.md)에 있습니다.
+
 ## 플랫폼 저장소 구성
 
 ```text
